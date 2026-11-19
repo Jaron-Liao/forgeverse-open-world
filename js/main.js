@@ -37,6 +37,11 @@ import {
   showManager, showConfig, hideConfig, renderManager,
 } from './world-manager.js';
 import { initViewport, registerViewport, setPaused, renderViewports, resize as viewportResize, setViewportActive } from './viewport.js';
+import {
+  initVoxel, setVoxelMode, isVoxelMode, placeVoxel, removeVoxel, getVoxelCount,
+  getVoxelState, serializeVoxels, loadVoxels, clearVoxels, setVoxelMaterial, getVoxelMaterial, VOXEL_PALETTE,
+} from './voxel.js';
+import { initPhysics, registerBody, unregisterBody, setPhysicsEnabled, isPhysicsEnabled, getBodyCount } from './physics.js';
 
 const $ = id => document.getElementById(id);
 const MODE_TXT = { select: '选择', paint: '绘画', sculpt: '雕刻', terrain: '地貌' };
@@ -102,6 +107,11 @@ function boot() {
   eng.setRenderFn(renderViewports);
   eng.setResizeFn(viewportResize);
 
+  // 体素沙盒 + 物理（P0-4/5）：先初始化，模式默认关闭，不干扰现有交互
+  initVoxel(eng);
+  initPhysics(eng);
+  wireVoxelTools();
+
   // 多世界管理：showManager 内部已含 init/render/bind，单一入口
   showManager();
   setupWorldAutosave();
@@ -133,6 +143,7 @@ function boot() {
   });
   eng.renderer.domElement.addEventListener('pointerup', ev => {
     if (ev.button !== 0 || !downXY) return;
+    if (isVoxelMode()) { downXY = null; return; } // 体素模式下不做物体拾取，交给 voxel.js
     const moved = Math.hypot(ev.clientX - downXY[0], ev.clientY - downXY[1]);
     downXY = null;
     if (moved > 5 || eng.tcontrols.dragging) return;
@@ -399,6 +410,34 @@ function wireUI() {
     if (App.realism !== false) applyRealisticTime(autoT); else { App.engine.setTimeOfDay(autoT); updateSky(autoT); }
     const ts = $('timeSlider'); if (ts) ts.value = Math.round(autoT * 100);
   });
+}
+
+// ---- 体素沙盒：模式切换 / 材质 / 物理开关（P0-3/4/5/6）----
+function wireVoxelTools() {
+  const modeBtns = ['v9-mode-free', 'v9-mode-voxel'];
+  const tools = $('v9-voxel-tools');
+  modeBtns.forEach(id => {
+    const b = $(id); if (!b) return;
+    b.onclick = () => {
+      const voxel = id === 'v9-mode-voxel';
+      modeBtns.forEach(x => $(x)?.classList.toggle('active', x === id));
+      setVoxelMode(voxel);
+      if (tools) tools.classList.toggle('hidden', !voxel);
+      toast(voxel ? '方块沙盒：左键放置 · 右键破坏' : '已返回自由创作');
+      bus.emit('voxel:ui-mode', { voxel });
+    };
+  });
+  document.querySelectorAll('[data-voxel-mat]').forEach(b => b.onclick = () => {
+    document.querySelectorAll('[data-voxel-mat]').forEach(x => x.classList.remove('active'));
+    b.classList.add('active');
+    setVoxelMaterial(b.dataset.voxelMat);
+  });
+  if ($('v9-physics-toggle')) $('v9-physics-toggle').onchange = e => {
+    setPhysicsEnabled(e.target.checked);
+    toast(e.target.checked ? '物理已开启：方块与物体受重力/碰撞影响' : '物理已关闭');
+  };
+  // 方块变化纳入自动保存触发
+  bus.on('voxel:change', () => { App.voxelDirty = true; });
 }
 
 // ---- 自动保存：2s 防抖 + 切后台强制 flush ----

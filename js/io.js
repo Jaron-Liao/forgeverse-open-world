@@ -7,6 +7,7 @@ import { generateTerrain, applyTheme } from './world.js';
 import { renderTasks } from './tasks.js';
 import { loadEdits } from './terrain-edit.js';
 import { buildBiome } from './biomes.js';
+import { serializeVoxels, loadVoxels } from './voxel.js';
 
 const KEY = 'forgeverse_v1';
 
@@ -28,7 +29,8 @@ function matSnapshot(root) {
 
 export function serialize() {
   return {
-    v: 3, worldName: App.worldName, theme: App.theme, level: App.level, xp: App.xp,
+    v: 4, worldName: App.worldName, theme: App.theme, level: App.level, xp: App.xp,
+    voxels: serializeVoxels(),
     time: Number(document.getElementById('timeSlider')?.value || 55) / 100,
     terrain: { seed: App.terrainSeed, height: App.terrainHeight, seg: App.terrainSeg },
     tasks: App.tasks,
@@ -96,6 +98,7 @@ export function deserialize(d) {
   if (d.weather) { App.weather = d.weather; }
   if (d.biomeName) { App.biomeName = d.biomeName; buildBiome(d.biomeName); }
   if (d.terrainEdits) loadEdits(d.terrainEdits);
+  if (Array.isArray(d.voxels)) loadVoxels(d.voxels);
   if (d.time != null) { App.engine.setTimeOfDay(d.time); const ts = document.getElementById('timeSlider'); if (ts) ts.value = Math.round(d.time * 100); }
   toast('世界已载入');
 }

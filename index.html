@@ -8,6 +8,44 @@
 <meta name="theme-color" content="#e8c37a" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <link rel="stylesheet" href="css/3d.css" />
+<!-- v9 工作台新增：仅本页生效，全部类/ID 以 v9- 前缀，变量复用 3d.css :root -->
+<style>
+.v9-modebar{position:absolute;top:68px;left:50%;transform:translateX(-50%);z-index:16;
+  display:flex;gap:4px;padding:4px;background:var(--panel2);border:1px solid var(--line);
+  border-radius:12px;backdrop-filter:blur(8px);box-shadow:var(--shadow)}
+.v9-mode-btn{background:transparent;border:0;color:var(--sub);padding:8px 18px;border-radius:9px;
+  cursor:pointer;font-size:13px;font-family:inherit;transition:background .15s,color .15s}
+.v9-mode-btn:hover{color:var(--txt)}
+.v9-mode-btn.active{background:linear-gradient(135deg,var(--cinnabar),var(--gold));color:#06121f;font-weight:700}
+.v9-voxel-tools{position:absolute;top:116px;left:50%;transform:translateX(-50%);z-index:16;
+  display:flex;align-items:center;gap:14px;padding:10px 14px;background:var(--panel2);
+  border:1px solid var(--line);border-radius:12px;backdrop-filter:blur(8px);box-shadow:var(--shadow)}
+.v9-voxel-tools[hidden]{display:none}
+.v9-vt-title{font-size:12px;color:var(--sub);letter-spacing:.5px;white-space:nowrap}
+.v9-vt-mats{display:flex;gap:6px}
+.v9-mat-btn{width:44px;height:44px;flex:0 0 44px;border-radius:8px;border:2px solid var(--line);
+  background:var(--swatch);cursor:pointer;transition:transform .15s,border-color .15s,box-shadow .15s}
+.v9-mat-btn:hover{transform:translateY(-2px)}
+.v9-mat-btn.active{border-color:var(--gold2);box-shadow:0 0 12px var(--gold-glow)}
+.v9-mat-btn[data-voxel-mat="grass"]{--swatch:#6FA85A}
+.v9-mat-btn[data-voxel-mat="dirt"]{--swatch:#8A6A3C}
+.v9-mat-btn[data-voxel-mat="stone"]{--swatch:#5C7691}
+.v9-mat-btn[data-voxel-mat="wood"]{--swatch:var(--gold-deep)}
+.v9-mat-btn[data-voxel-mat="sand"]{--swatch:#D9BA6A}
+.v9-mat-btn[data-voxel-mat="brick"]{--swatch:var(--cinnabar)}
+.v9-vt-hint{font-size:12px;color:var(--sub);white-space:nowrap}
+.v9-vt-physics{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--txt);cursor:pointer;white-space:nowrap}
+.v9-vt-physics input{accent-color:var(--acc);width:16px;height:16px;cursor:pointer}
+@media(max-width:900px){
+  .v9-voxel-tools{flex-wrap:wrap;justify-content:center;max-width:94vw;gap:8px 12px}
+  .v9-vt-hint,.v9-vt-physics{width:100%;justify-content:center;text-align:center}
+}
+@media(max-width:560px){
+  .v9-mode-btn{padding:8px 12px}
+  .v9-vt-mats{flex-wrap:wrap;justify-content:center}
+}
+@media(prefers-reduced-motion:reduce){.v9-mode-btn,.v9-mat-btn{transition:none}}
+</style>
 <!-- 腾讯云 SDK（CDN，plain HTML 无构建步骤） -->
 <script src="https://cdn.jsdelivr.net/npm/@tencent-ai/workbuddy-cloud-sdk@dev/lib/index.global.js"></script>
 <script type="importmap">
@@ -25,6 +63,27 @@
 <div id="app">
 
   <div id="stage"></div>
+
+  <!-- v9 模式切换条：自由创作 / 方块沙盒（事件由 main.js 接线） -->
+  <div id="v9-modebar" class="v9-modebar" role="group" aria-label="创作模式">
+    <button id="v9-mode-free" class="v9-mode-btn active" data-mode="free" type="button" aria-pressed="true">自由创作</button>
+    <button id="v9-mode-voxel" class="v9-mode-btn" data-mode="voxel" type="button" aria-pressed="false">方块沙盒</button>
+  </div>
+
+  <!-- v9 体素工具栏：默认隐藏，切到方块沙盒时显示（事件由 main.js 接线） -->
+  <div id="v9-voxel-tools" class="v9-voxel-tools" hidden aria-label="体素工具栏">
+    <span class="v9-vt-title">方块材质</span>
+    <div class="v9-vt-mats">
+      <button class="v9-mat-btn active" data-voxel-mat="grass" type="button" title="草地" aria-label="草地"></button>
+      <button class="v9-mat-btn" data-voxel-mat="dirt" type="button" title="泥土" aria-label="泥土"></button>
+      <button class="v9-mat-btn" data-voxel-mat="stone" type="button" title="石头" aria-label="石头"></button>
+      <button class="v9-mat-btn" data-voxel-mat="wood" type="button" title="木头" aria-label="木头"></button>
+      <button class="v9-mat-btn" data-voxel-mat="sand" type="button" title="沙子" aria-label="沙子"></button>
+      <button class="v9-mat-btn" data-voxel-mat="brick" type="button" title="砖块" aria-label="砖块"></button>
+    </div>
+    <span class="v9-vt-hint">左键放置 · 右键破坏</span>
+    <label class="v9-vt-physics"><input id="v9-physics-toggle" type="checkbox" checked /> 物理模拟</label>
+  </div>
 
   <!-- 顶部栏 -->
   <header id="topbar">

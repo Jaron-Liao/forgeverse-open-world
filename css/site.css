@@ -1,0 +1,200 @@
+/* =========================================================
+   ForgeVerse 站点样式 v9 · 静态多页外壳
+   - 仅用于 home/levels/leaderboard/help/about.html
+   - 所有色值复用 css/3d.css 的 :root 变量；
+     生态色块沿用 3d.css 既有配色（grass/snow/desert/cyber）
+   - 类名统一 site- 前缀；移动优先，断点 560px / 900px
+   ========================================================= */
+
+/* ---------- 0. 静态页基线（覆盖 3d.css 的 App 专用规则） ---------- */
+html, body { height: auto; min-height: 100%; }
+body {
+  overflow-x: hidden;
+  overflow-y: auto;
+  user-select: text;
+  -webkit-font-smoothing: antialiased;
+  font-family: "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  line-height: 1.6;
+}
+a { color: inherit; text-decoration: none; }
+img { max-width: 100%; }
+h1, h2, h3 { font-family: "Noto Serif SC", "Songti SC", Georgia, serif; line-height: 1.25; }
+h1 { font-size: clamp(28px, 4vw, 48px); }
+h2 { font-size: clamp(22px, 3vw, 32px); }
+h3 { font-size: 18px; }
+:focus-visible { outline: 2px solid var(--jade); outline-offset: 2px; }
+
+.site-page { display: flex; flex-direction: column; min-height: 100vh; }
+.site-main { flex: 1 0 auto; width: 100%; }
+.site-container { width: min(1120px, 100% - 32px); margin-inline: auto; }
+.site-num { font-family: ui-monospace, "SFMono-Regular", Consolas, monospace; }
+
+/* ---------- 1. 顶部导航 ---------- */
+.site-header {
+  position: sticky; top: 0; z-index: 30;
+  background: var(--panel2);
+  border-bottom: 1px solid var(--line);
+  backdrop-filter: blur(10px);
+}
+.site-nav-wrap {
+  width: min(1120px, 100% - 32px);
+  margin-inline: auto;
+  min-height: 60px;
+  display: flex; align-items: center; gap: 16px;
+}
+.site-logo { display: inline-flex; align-items: center; gap: 8px; font-size: 20px; font-weight: 800; letter-spacing: .5px; white-space: nowrap; }
+.site-logo-mark { color: var(--acc); filter: drop-shadow(0 0 8px var(--acc)); }
+.site-logo-sub { color: var(--sub); font-size: 11px; font-weight: 400; }
+
+/* 汉堡：纯 CSS checkbox hack，移动端显示 */
+.site-nav-toggle { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.site-nav-btn {
+  display: inline-flex; flex-direction: column; justify-content: center; gap: 5px;
+  margin-left: auto; width: 44px; height: 44px; padding: 10px;
+  border: 1px solid var(--line); border-radius: 8px; cursor: pointer;
+}
+.site-nav-btn span { display: block; height: 2px; background: var(--txt); border-radius: 2px; }
+
+.site-nav { display: none; flex-direction: column; gap: 2px; width: 100%; padding: 8px 0 14px; }
+.site-nav a {
+  display: block; padding: 12px 14px; border-radius: 8px;
+  color: var(--sub); font-size: 14px; transition: background .15s, color .15s;
+}
+.site-nav a:hover { background: var(--panel); color: var(--txt); }
+.site-nav a[aria-current="page"] { color: var(--gold2); background: rgba(232, 195, 122, .12); font-weight: 700; }
+.site-nav-toggle:checked ~ .site-nav { display: flex; }
+.site-nav-toggle:checked ~ .site-nav-btn span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+.site-nav-toggle:checked ~ .site-nav-btn span:nth-child(2) { opacity: 0; }
+.site-nav-toggle:checked ~ .site-nav-btn span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+/* ---------- 2. 通用区块 / 按钮 ---------- */
+.site-section { padding: 48px 0; }
+.site-section + .site-section { padding-top: 0; }
+.site-heading { margin: 0 0 24px; }
+.site-heading p { color: var(--sub); margin: 8px 0 0; max-width: 60ch; }
+.site-eyebrow { color: var(--acc); font-size: 12px; letter-spacing: 2px; text-transform: uppercase; }
+
+.site-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-height: 44px; padding: 10px 22px; border-radius: 8px;
+  font-size: 15px; font-family: inherit; cursor: pointer; transition: transform .15s, box-shadow .15s, filter .15s;
+}
+.site-btn-primary { background: linear-gradient(135deg, var(--cinnabar), var(--gold)); color: #06121f; font-weight: 800; border: 0; }
+.site-btn-primary:hover { filter: brightness(1.08); box-shadow: 0 0 20px var(--gold-glow); }
+.site-btn-primary:active { transform: translateY(1px); }
+.site-btn-ghost { background: transparent; border: 1px solid var(--line); color: var(--txt); }
+.site-btn-ghost:hover { background: var(--panel2); border-color: var(--acc); }
+
+/* ---------- 3. 卡片通用 ---------- */
+.site-grid { display: grid; gap: 16px; grid-template-columns: 1fr; }
+.site-card {
+  background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+  overflow: hidden; transition: transform .18s, box-shadow .18s, border-color .18s;
+}
+.site-card:hover { transform: translateY(-4px); border-color: var(--acc); box-shadow: 0 20px 60px rgba(0, 0, 0, .65); }
+.site-card-body { padding: 20px; }
+.site-card-body h3 { margin: 0 0 8px; color: var(--gold2); }
+.site-card-body p { margin: 0; color: var(--sub); font-size: 14px; }
+
+/* 生态色块：沿用 3d.css 既有渐变，不新增 rogue 色值 */
+.site-eco-art { height: 140px; position: relative; }
+.site-eco-art[data-biome="grass"]  { background: linear-gradient(160deg, #33543A, #6FA85A); }
+.site-eco-art[data-biome="snow"]   { background: linear-gradient(160deg, #5C7691, #DCEAF7); }
+.site-eco-art[data-biome="desert"] { background: linear-gradient(160deg, #8A6A3C, #D9BA6A); }
+.site-eco-art[data-biome="cyber"]  { background: linear-gradient(160deg, #1E2740, #4DE1FF); }
+.site-eco-tag {
+  position: absolute; left: 12px; bottom: 12px;
+  padding: 4px 12px; border-radius: 999px; font-size: 12px;
+  background: rgba(18, 19, 27, .72); border: 1px solid var(--line); color: var(--txt);
+}
+
+/* ---------- 4. 首页首屏 ---------- */
+.site-hero {
+  position: relative; overflow: hidden;
+  padding: 72px 0 64px;
+  border-bottom: 1px solid var(--line);
+  background:
+    radial-gradient(60% 80% at 80% -10%, rgba(232, 195, 122, .14), transparent 60%),
+    radial-gradient(50% 70% at 10% 110%, rgba(77, 225, 255, .08), transparent 60%),
+    var(--bg);
+}
+.site-hero-inner { position: relative; z-index: 1; text-align: center; }
+.site-hero h1 { margin: 12px 0 8px; color: var(--gold2); text-shadow: 0 2px 30px var(--gold-glow); }
+.site-hero-lead { color: var(--sub); font-size: clamp(16px, 2vw, 20px); margin: 0 0 28px; }
+.site-hero-cta { display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; }
+.site-hero-mark { color: var(--acc); font-size: 28px; letter-spacing: 6px; }
+
+/* 三栏特性 */
+.site-feature { padding: 24px 20px; text-align: center; }
+.site-feature .site-fi {
+  width: 48px; height: 48px; margin: 0 auto 14px;
+  display: flex; align-items: center; justify-content: center;
+  border: 1px solid var(--line); border-radius: 12px; color: var(--acc); font-size: 20px;
+}
+
+/* ---------- 5. 关卡卡片 ---------- */
+.site-level-card .site-card-body { display: flex; flex-direction: column; gap: 12px; }
+.site-level-meta { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.site-level-no { color: var(--acc); font-size: 13px; letter-spacing: 1px; }
+.site-stars { color: var(--gold); letter-spacing: 2px; font-size: 14px; }
+.site-stars .off { color: var(--sub); opacity: .45; }
+.site-level-tag { display: inline-block; align-self: flex-start; padding: 3px 10px; border: 1px solid var(--line); border-radius: 999px; color: var(--sub); font-size: 12px; }
+.site-concept-note { margin-top: 24px; color: var(--sub); font-size: 13px; padding: 12px 16px; border: 1px dashed var(--line); border-radius: 8px; background: var(--panel); }
+
+/* ---------- 6. 表格 / 空状态 ---------- */
+.site-table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
+.site-table { width: 100%; border-collapse: collapse; min-width: 520px; }
+.site-table th, .site-table td { padding: 14px 16px; text-align: left; border-bottom: 1px solid var(--line); font-size: 14px; }
+.site-table th { color: var(--acc); font-weight: 700; background: var(--panel2); white-space: nowrap; }
+.site-table td { color: var(--txt); }
+.site-table tbody tr:last-child td { border-bottom: 0; }
+.site-empty { padding: 56px 20px; text-align: center; color: var(--sub); }
+.site-empty-mark { display: block; color: var(--acc); font-size: 30px; margin-bottom: 12px; }
+.site-empty p { margin: 0; }
+
+/* ---------- 7. 帮助 / 关于 ---------- */
+.site-help-list { display: grid; gap: 12px; grid-template-columns: 1fr; }
+.site-help-item { padding: 16px 20px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; }
+.site-help-item b { display: block; color: var(--gold2); margin-bottom: 6px; }
+.site-help-item span { color: var(--sub); font-size: 14px; }
+.site-stack { display: flex; flex-wrap: wrap; gap: 8px; padding: 0; margin: 12px 0 0; list-style: none; }
+.site-stack li { padding: 6px 14px; background: var(--panel2); border: 1px solid var(--line); border-radius: 999px; font-size: 13px; color: var(--txt); }
+.site-license { margin-top: 24px; padding: 16px 20px; background: var(--panel); border: 1px dashed var(--line); border-radius: 10px; color: var(--sub); font-size: 14px; }
+
+/* ---------- 8. 页脚 ---------- */
+.site-footer { flex-shrink: 0; border-top: 1px solid var(--line); background: var(--panel2); }
+.site-footer-inner {
+  width: min(1120px, 100% - 32px); margin-inline: auto;
+  padding: 24px 0; display: flex; flex-direction: column; gap: 12px;
+  color: var(--sub); font-size: 13px;
+}
+.site-footer-links { display: flex; flex-wrap: wrap; gap: 8px 18px; }
+.site-footer-links a:hover { color: var(--acc); }
+.site-foot-note { color: var(--sub); opacity: .8; }
+
+/* ---------- 9. 断点：≥560px ---------- */
+@media (min-width: 560px) {
+  .site-grid { grid-template-columns: repeat(2, 1fr); }
+  .site-help-list { grid-template-columns: repeat(2, 1fr); }
+  .site-container, .site-nav-wrap, .site-footer-inner { width: min(1120px, 100% - 48px); }
+  .site-section { padding: 56px 0; }
+}
+
+/* ---------- 10. 断点：≥900px（宽屏导航回归横排） ---------- */
+@media (min-width: 900px) {
+  .site-nav-wrap { min-height: 64px; }
+  .site-nav-btn { display: none; }
+  .site-nav { display: flex; flex-direction: row; width: auto; margin-left: auto; padding: 0; align-items: center; }
+  .site-nav a { padding: 8px 14px; }
+  .site-grid { grid-template-columns: repeat(4, 1fr); }
+  .site-help-list { grid-template-columns: repeat(3, 1fr); }
+  .site-features { grid-template-columns: repeat(3, 1fr); }
+  .site-hero { padding: 96px 0 80px; }
+  .site-eco-art { height: 160px; }
+}
+
+/* ---------- 11. 动效降级 ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .site-card, .site-nav a, .site-btn { transition: none; }
+  .site-card:hover { transform: none; }
+}
