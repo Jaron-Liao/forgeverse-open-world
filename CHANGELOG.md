@@ -2,7 +2,18 @@
 
 本项目所有重要变更记录于此。格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本遵循语义化版本（SemVer）。
 
-## [Unreleased] — v9 规划中
+## [Unreleased] — v9 进行中
+
+### Added（PR #1 · feature/voxel-sandbox）
+- 体素方块沙盒 `js/voxel.js`：chunk + InstancedMesh 渲染、6 材质、放置/破坏、序列化（上限 20000）。
+- 轻量物理 `js/physics.js`：重力 + AABB 碰撞 + 空间哈希（上限 200 body，60fps 目标）。
+- 模式切换：自由创作 / 方块沙盒双模式；体素工具栏（材质 + 物理开关）。
+- 多页导航外壳：home / levels / leaderboard / help / about 五个静态页 + `css/site.css`。
+- 设计系统 v9：`docs/DESIGN_SYSTEM_V9.md`（全站配色/字体/间距/组件/动效规范）。
+
+### Changed
+- `io.js` 存档升级 v4，纳入体素数据。
+- `main.js` 接线体素/物理并隔离体素模式下的物体拾取。
 
 ### Planned
 - P0：GitHub 分支策略与 PR 流程（本文件即基线）
