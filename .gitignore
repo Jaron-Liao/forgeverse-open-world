@@ -1,0 +1,22 @@
+# WorkBuddy / 平台内部文件
+.wbapp_*.genie
+.workbuddy/
+*.genie
+
+# 临时与构建产物
+_*.json
+_*.js
+_*.cjs
+_page_import.zip
+push-to-github.sh
+_git_auth_test.txt
+
+# 依赖与系统
+node_modules/
+.DS_Store
+Thumbs.db
+
+# 本地环境
+.env
+.env.local
+*.log

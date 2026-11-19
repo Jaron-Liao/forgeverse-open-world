@@ -1,0 +1,14 @@
+{
+  "name": "ForgeVerse 开放世界工作台",
+  "short_name": "ForgeVerse",
+  "description": "3D 沙盒造物工作台：雪地/沙漠/都市分层场景、地形编辑、第一/三人称漫游",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0c0f1a",
+  "theme_color": "#e8c37a",
+  "icons": [
+    { "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' rx='40' fill='%230c0f1a'/><text x='96' y='130' font-size='110' text-anchor='middle' fill='%23e8c37a'>◆</text></svg>", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

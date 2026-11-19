@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ForgeVerse · 3D 造物工作台</title>
+<link rel="manifest" href="manifest.webmanifest" />
+<meta name="theme-color" content="#e8c37a" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<link rel="stylesheet" href="css/3d.css" />
+<!-- 腾讯云 SDK（CDN，plain HTML 无构建步骤） -->
+<script src="https://cdn.jsdelivr.net/npm/@tencent-ai/workbuddy-cloud-sdk@dev/lib/index.global.js"></script>
+<script type="importmap">
+{
+  "imports": {
+    "three": "./vendor/three/three.module.js",
+    "three/addons/": "./vendor/three/addons/",
+    "three-mesh-bvh": "./vendor/csg/three-mesh-bvh.module.js",
+    "three-bvh-csg": "./vendor/csg/three-bvh-csg.module.js"
+  }
+}
+</script>
+</head>
+<body>
+<div id="app">
+
+  <div id="stage"></div>
+
+  <!-- 顶部栏 -->
+  <header id="topbar">
+    <div class="brand">
+      <span class="logo">◆</span>
+      <div><div class="bt">ForgeVerse</div><div class="bs">3D 造物工作台</div></div>
+    </div>
+
+    <div class="modes" id="modeTabs">
+      <button class="mode active" data-mode="select">🛠 选择</button>
+      <button class="mode" data-mode="paint">🎨 绘画</button>
+      <button class="mode" data-mode="sculpt">⛰ 雕刻</button>
+      <button class="mode" data-mode="terrain">🌿 地貌</button>
+    </div>
+
+    <div class="searchbar">
+      <span>🔍</span>
+      <input id="globalSearch" placeholder="搜索物体 / 任务 / 笔记…" autocomplete="off" />
+      <div id="searchResults" class="search-results"></div>
+    </div>
+
+    <div class="topright">
+      <button id="btnCloudSync" class="ghost cloud-btn" title="登录并云同步">☁ 登录</button>
+      <button id="btnThird" class="ghost" title="第三人称漫游">🧍 三人称</button>
+      <label class="mini">☀<input id="timeSlider" type="range" min="0" max="100" value="55" /></label>
+      <button id="btnQuality" class="ghost qbtn" title="画质档位">🎬 高清</button>
+      <button id="btnFP" class="icon" title="第一人称漫游">🚶</button>
+      <button id="btnHelp" class="icon" title="帮助">?</button>
+      <button id="btnGrid" class="icon active" title="网格">▦</button>
+      <button id="btnFog" class="icon active" title="雾">🌫</button>
+      <button id="btnParticles" class="icon active" title="粒子">✺</button>
+      <button id="btnUndo" class="icon" title="撤销">↶</button>
+      <button id="btnRedo" class="icon" title="重做">↷</button>
+      <button id="btnShot" class="icon" title="截图">📷</button>
+      <button id="btnSave" class="ghost">保存</button>
+      <button id="btnLoad" class="ghost">读取</button>
+      <button id="btnExport" class="ghost">导出</button>
+      <button id="btnBackWorlds" class="ghost" title="返回世界管理">🏛 世界</button>
+      <input id="fileInput" type="file" accept=".json" hidden />
+    </div>
+  </header>
+
+  <!-- 左侧：模型库 -->
+  <aside id="leftbar" class="auto-hide">
+    <div class="rail-handle" title="悬停展开">‹</div>
+    <div class="lbl">资产库 / 导入</div>
+    <div class="lib2">
+      <button id="btnImportGLB" class="ghost imp">＋ 导入GLB</button>
+      <button id="btnImportGLTF" class="ghost imp">＋ 导入GLTF</button>
+    </div>
+    <input id="modelFileInput" type="file" accept=".glb,.gltf" multiple hidden />
+    <div id="customAssets" class="lib"></div>
+    <div class="lbl">基础体</div>
+    <div class="lib" id="libPrim">
+      <button data-spawn="box">⬛ 立方体</button>
+      <button data-spawn="sphere">● 球体</button>
+      <button data-spawn="capsule">🥫 胶囊</button>
+      <button data-spawn="cone">▲ 锥体</button>
+      <button data-spawn="cylinder">⬢ 圆柱</button>
+      <button data-spawn="torus">◯ 圆环</button>
+    </div>
+    <div class="lbl">高级几何体</div>
+    <div class="lib" id="libAdv">
+      <button data-adv="torusKnot">🌀 纽结</button>
+      <button data-adv="icosa">🔷 二十面</button>
+      <button data-adv="dodeca">⬡ 十二面</button>
+      <button data-adv="octa">💎 八面</button>
+      <button data-adv="lathe">🏺 旋转体</button>
+      <button data-adv="spring">〰 弹簧</button>
+    </div>
+    <div class="lbl">场景物件</div>
+    <div class="lib" id="libModel">
+      <button data-model="tree">🌳 树</button>
+      <button data-model="rock">🪨 巨石</button>
+      <button data-model="bush">🌿 灌木</button>
+      <button data-model="lamp">💡 路灯</button>
+      <button data-model="char">🧍 角色</button>
+      <button data-model="chest">📦 宝箱</button>
+    </div>
+    <div class="lbl">场景树 <span id="treeCount" class="cnt">0</span></div>
+    <div id="sceneTree" class="tree"></div>
+  </aside>
+
+  <!-- 右侧：检查器（6 标签） -->
+  <aside id="rightbar" class="auto-hide">
+    <div class="rail-handle" title="悬停展开">›</div>
+    <div class="tabs" id="inspTabs">
+      <button class="it active" data-tab="obj">对象</button>
+      <button class="it" data-tab="build">建模</button>
+      <button class="it" data-tab="paint">画笔</button>
+      <button class="it" data-tab="mat">材质</button>
+      <button class="it" data-tab="world">世界</button>
+      <button class="it" data-tab="env">环境</button>
+      <button class="it" data-tab="scene">场景</button>
+    </div>
+
+    <!-- 对象 -->
+    <section class="panel" id="tab-obj">
+      <div id="objEmpty" class="hint">在视口或场景树中选择一个物体</div>
+      <div id="objBody" hidden>
+        <label class="row">名称 <input id="objName" type="text" /></label>
+        <div class="grp">位置</div>
+        <div class="vec3"><input id="px" type="number" step="0.1" /><input id="py" type="number" step="0.1" /><input id="pz" type="number" step="0.1" /></div>
+        <div class="grp">旋转°</div>
+        <div class="vec3"><input id="rx" type="number" step="1" /><input id="ry" type="number" step="1" /><input id="rz" type="number" step="1" /></div>
+        <div class="grp">缩放</div>
+        <div class="vec3"><input id="sx" type="number" step="0.1" /><input id="sy" type="number" step="0.1" /><input id="sz" type="number" step="0.1" /></div>
+        <div class="grp">材质</div>
+        <label class="row">颜色 <input id="mColor" type="color" value="#7cc6ff" /></label>
+        <label class="row">粗糙度 <input id="mRough" type="range" min="0" max="1" step="0.01" value="0.6" /></label>
+        <label class="row">金属度 <input id="mMetal" type="range" min="0" max="1" step="0.01" value="0.1" /></label>
+        <label class="row">自发光 <input id="mEmissive" type="color" value="#000000" /></label>
+        <label class="row">不透明度 <input id="mOpacity" type="range" min="0.1" max="1" step="0.01" value="1" /></label>
+        <label class="row chk"><input id="mWire" type="checkbox" /> 线框</label>
+        <div class="btnrow">
+          <button id="btnDup" class="ghost">复制</button>
+          <button id="btnHide" class="ghost">隐藏</button>
+          <button id="btnDel" class="danger">删除</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 建模 -->
+    <section class="panel" id="tab-build" hidden>
+      <div class="grp">布尔运算 <span class="sub">主体=选中物体</span></div>
+      <div class="bool-target">
+        <button id="btnPickBool" class="ghost">◎ 拾取目标</button>
+        <span id="boolTargetName">未选择目标</span>
+      </div>
+      <div class="lib2">
+        <button data-bool="union">并集</button>
+        <button data-bool="subtract">差集</button>
+        <button data-bool="intersect">交集</button>
+      </div>
+      <div class="hint xs">先选中主体→点「拾取目标」→点击另一物体→选运算</div>
+      <div class="grp">网格处理</div>
+      <div class="lib2">
+        <button id="btnSubdivide">细分×4</button>
+        <button id="btnMirrorX">镜像X</button>
+        <button id="btnMirrorY">镜像Y</button>
+      </div>
+      <div class="grp">阵列</div>
+      <label class="row">数量 <input id="arCount" type="number" value="6" min="2" max="60" /></label>
+      <label class="row">间距/半径 <input id="arParam" type="number" value="3" step="0.5" /></label>
+      <div class="lib2">
+        <button data-array="linear">线性</button>
+        <button data-array="radial">环形</button>
+        <button data-array="grid">网格</button>
+      </div>
+      <div class="grp">挤出形状</div>
+      <label class="row">深度 <input id="exDepth" type="range" min="0.2" max="3" step="0.1" value="0.8" /></label>
+      <div class="lib2" id="extrudeBtns">
+        <button data-extrude="star">⭐ 星形</button>
+        <button data-extrude="gear">⚙ 齿轮</button>
+        <button data-extrude="heart">❤ 心形</button>
+      </div>
+    </section>
+
+    <!-- 画笔 -->
+    <section class="panel" id="tab-paint" hidden>
+      <div class="grp">绘画模式</div>
+      <div class="lib2">
+        <button class="pmode active" data-pmode="vertex">顶点色</button>
+        <button class="pmode" data-pmode="texture">纹理画布</button>
+      </div>
+      <div id="vertexBrush">
+        <div class="grp">笔刷</div>
+        <label class="row">颜色 <input id="bColor" type="color" value="#ff5577" /></label>
+        <label class="row">大小 <input id="bSize" type="range" min="0.2" max="6" step="0.1" value="1.4" /></label>
+        <label class="row">强度 <input id="bStr" type="range" min="0.05" max="1" step="0.05" value="0.6" /></label>
+        <div class="grp">形状</div>
+        <div class="lib2">
+          <button class="bshape active" data-bshape="round">● 圆</button>
+          <button class="bshape" data-bshape="square">■ 方</button>
+          <button class="bshape" data-bshape="star">✦ 星</button>
+        </div>
+        <label class="row chk"><input id="bSoft" type="checkbox" checked /> 柔边</label>
+        <label class="row chk"><input id="bErase" type="checkbox" /> 擦除（恢复底色）</label>
+        <div class="hint xs">切到「🎨 绘画」模式，在模型上按住拖动即可上色。</div>
+      </div>
+      <div id="textureBrush" hidden>
+        <div class="grp">纹理画板</div>
+        <canvas id="texCanvas" class="texcanvas"></canvas>
+        <label class="row">画笔色 <input id="texColor" type="color" value="#5cc8ff" /></label>
+        <label class="row">笔触 <input id="texSize" type="range" min="2" max="60" step="2" value="16" /></label>
+        <div class="btnrow">
+          <button id="btnTexClear" class="ghost">清空</button>
+          <button id="btnTexApply" class="ghost">贴到物体</button>
+          <button id="btnTexExport" class="ghost">导出</button>
+        </div>
+        <div class="hint xs">在画板上绘制图案→选中物体→点「贴到物体」。</div>
+      </div>
+    </section>
+
+    <!-- 材质 -->
+    <section class="panel" id="tab-mat" hidden>
+      <div class="grp">PBR 材质预设</div>
+      <div class="matgrid" id="matGrid">
+        <button data-preset="gold" style="--c:#ffc94d">黄金</button>
+        <button data-preset="silver" style="--c:#dfe6ef">白银</button>
+        <button data-preset="copper" style="--c:#d98b5a">红铜</button>
+        <button data-preset="glass" style="--c:#bfe6ff">玻璃</button>
+        <button data-preset="ceramic" style="--c:#f2f0e6">陶瓷</button>
+        <button data-preset="plastic" style="--c:#5cc8ff">塑料</button>
+        <button data-preset="wood" style="--c:#9b6b43">木质</button>
+        <button data-preset="rubber" style="--c:#2b2b33">橡胶</button>
+        <button data-preset="lava" style="--c:#ff4d1a">熔岩</button>
+        <button data-preset="neon" style="--c:#39ffd0">霓虹</button>
+        <button data-preset="marble" style="--c:#e8e6e2">大理石</button>
+        <button data-preset="chocolate" style="--c:#5a3418">巧克力</button>
+      </div>
+      <div class="grp">程序化 PBR 纹理 <span class="sub">颜色+法线+粗糙</span></div>
+      <div class="lib2" id="pbrTexBtns">
+        <button data-pbr="grass">🌿 草地</button>
+        <button data-pbr="rock">🪨 岩石</button>
+        <button data-pbr="bark">🌳 树皮</button>
+        <button data-pbr="sand">🏖 沙地</button>
+        <button data-pbr="snow">❄ 雪地</button>
+      </div>
+      <button id="btnEnhanceAll" class="ghost full">一键润色全场</button>
+      <div class="hint xs">选中物体后点击材质/PBR纹理即可应用；「一键润色全场」给地形与所有资产贴图。</div>
+    </section>
+
+    <!-- 世界 -->
+    <section class="panel" id="tab-world" hidden>
+      <div class="grp">地形</div>
+      <label class="row">随机种子 <input id="tSeed" type="number" value="7" /></label>
+      <label class="row">起伏强度 <input id="tHeight" type="range" min="0" max="8" step="0.2" value="3" /></label>
+      <label class="row">分辨率 <input id="tSeg" type="range" min="32" max="160" step="8" value="96" /></label>
+      <button id="btnGenTerrain" class="ghost full">生成地形</button>
+      <div class="grp">雕刻</div>
+      <div class="lib2">
+        <button class="active" data-sculpt="raise">⬆ 隆起</button>
+        <button data-sculpt="lower">⬇ 下沉</button>
+        <button data-sculpt="smooth">〜 平滑</button>
+      </div>
+      <label class="row">笔刷大小 <input id="scSize" type="range" min="0.5" max="10" step="0.5" value="3" /></label>
+      <label class="row">笔刷强度 <input id="scStr" type="range" min="0.1" max="4" step="0.1" value="1.2" /></label>
+      <div class="grp">地貌涂装</div>
+      <div class="lib2" id="biomeBtns">
+        <button data-biome="grass" style="background:#4f9d4f">草</button>
+        <button data-biome="sand" style="background:#d9c27a">沙</button>
+        <button data-biome="rock" style="background:#8a8a8a">岩</button>
+        <button data-biome="snow" style="background:#eef3ff">雪</button>
+        <button data-biome="path" style="background:#9b6b43">路</button>
+        <button data-biome="water" style="background:#3a78c2">水</button>
+      </div>
+      <label class="row chk"><input id="wWater" type="checkbox" checked /> 动态水面</label>
+      <label class="row chk"><input id="wAutoDay" type="checkbox" /> 自动昼夜循环</label>
+    </section>
+
+    <!-- 环境 -->
+    <section class="panel" id="tab-env" hidden>
+      <div class="grp">天气 · 全球环境</div>
+      <div class="lib2" id="weatherBtns">
+        <button class="active" data-weather="clear">☀ 晴朗</button>
+        <button data-weather="rain">🌧 下雨</button>
+        <button data-weather="snow">❄ 下雪</button>
+        <button data-weather="storm">⛈ 雷暴</button>
+        <button data-weather="fog">🌫 浓雾</button>
+        <button data-weather="aurora">🌌 极光</button>
+        <button data-weather="sandstorm">🌪 沙暴</button>
+        <button data-weather="sunny">🌤 多云</button>
+        <button data-weather="mist">🌁 薄雾</button>
+      </div>
+      <div class="grp">地图 · 种子与定位</div>
+      <label class="row">世界种子 <input id="mapSeed" type="number" value="7" /></label>
+      <div class="btnrow">
+        <button id="btnApplySeed" class="ghost">应用种子</button>
+        <button id="btnAddBookmark" class="ghost">＋ 书签</button>
+      </div>
+      <div id="bookmarkList" class="tree" style="max-height:120px;margin-top:6px"></div>
+      <div class="grp">植被散布</div>
+      <label class="row">密度 <input id="vgDensity" type="range" min="0.3" max="2" step="0.1" value="1" /></label>
+      <div class="btnrow">
+        <button id="btnScatter" class="ghost">散布</button>
+        <button id="btnClearVeg" class="ghost">清除</button>
+      </div>
+      <div class="grp">天空</div>
+      <label class="row chk"><input id="wSky" type="checkbox" checked /> 程序化天空</label>
+      <div class="hint xs">天空亮度随时间滑杆变化；天气粒子实时飘落。</div>
+    </section>
+
+    <!-- 场景：环境分层 / 地形编辑 / 真实感 -->
+    <section class="panel" id="tab-scene" hidden>
+      <div class="grp">环境主题 <span class="sub">建筑/地形/装饰分层</span></div>
+      <div class="lib2" id="biomeBtnsTop">
+        <button data-biome-switch="desert">🏜 沙漠 Pro</button>
+        <button data-biome-switch="snow">❄ 雪地 Pro</button>
+        <button data-biome-switch="urban" class="active">🌆 都市</button>
+      </div>
+      <div class="grp">分层替换 <span class="sub">单独换一层</span></div>
+      <div class="lib2">
+        <button id="btnReplBuild">换建筑</button>
+        <button id="btnReplDecor">换装饰</button>
+        <button id="btnReplRoad">换公路</button>
+      </div>
+      <div class="hint xs">每套环境的建筑 / 地形 / 装饰 / 公路各自独立成层，可单独替换，便于后续扩展。</div>
+      <div class="grp">地形编辑</div>
+      <div class="lib2" id="editModeBtns">
+        <button data-editmode="select" class="active">🖱 选择</button>
+        <button data-editmode="water">💧 水源</button>
+        <button data-editmode="dig">⛏ 挖地</button>
+      </div>
+      <div class="hint xs">💧 左键放水源；Shift+左键删附近水源。⛏ 左键拖动挖低地形。编辑会写入存档。</div>
+      <label class="row">水源半径 <input id="editWaterR" type="range" min="2" max="10" step="0.5" value="4" /></label>
+      <label class="row">挖地半径 <input id="editDigR" type="range" min="2" max="12" step="0.5" value="5" /></label>
+      <label class="row">挖地深度 <input id="editDigD" type="range" min="0.2" max="4" step="0.2" value="1.2" /></label>
+      <div class="grp">真实感渲染</div>
+      <label class="row chk"><input id="wRealism" type="checkbox" checked /> 真实光照与大气</label>
+      <label class="row chk"><input id="wSurfaceDetail" type="checkbox" checked /> 地表微细节</label>
+      <div class="hint xs">太阳高度角驱动天空/光色温；关闭则回退到基础渲染。</div>
+    </section>
+  </aside>
+
+  <!-- 底部：操作台（信息台 + 任务台） -->
+  <footer id="bottombar">
+    <div class="infobar">
+      <div class="info-col">
+        <h4>📓 信息台 · 笔记</h4>
+        <textarea id="noteBox" placeholder="随手记…（自动保存到存档）"></textarea>
+      </div>
+      <div class="info-col" style="flex:0 0 150px">
+        <h4>🌦 天气 / 环境</h4>
+        <div class="wx" id="infoWeather">晴朗 · 白昼</div>
+        <div class="wx" id="infoSeed">种子 —</div>
+      </div>
+      <div class="info-col" style="flex:0 0 150px">
+        <h4>👤 个人信息</h4>
+        <div class="me" id="infoUser">未登录<br>本地访客模式</div>
+      </div>
+    </div>
+    <div class="tasks" style="flex:1.15">
+      <div class="t-head"><span>⚔ 操作台 · 任务台</span><span class="lv">Lv.<b id="lvNum">1</b></span></div>
+      <div class="xpbar"><i id="xpFill"></i><span id="xpTxt">0 / 100 XP</span></div>
+      <div class="t-add"><input id="taskIn" placeholder="新建任务，回车添加…" maxlength="40" /><button id="taskAdd">+</button>
+        <button id="btnSaveLocalFile" class="ghost" title="保存到本地文件">💾</button>
+        <button id="btnLoadLocalFile" class="ghost" title="读取本地文件">📂</button>
+      </div>
+      <ul id="taskList" class="t-list"></ul>
+    </div>
+    <div class="companion">
+      <div id="petBubble" class="bubble">开工啦，造点好东西！</div>
+      <div class="pet" id="pet">🐲</div>
+      <div class="pet-name">造物精灵 · <span id="petMood">待命</span></div>
+    </div>
+    <div class="hud">
+      <div>FPS <b id="hFps">–</b></div>
+      <div>物体 <b id="hObj">0</b></div>
+      <div>面数 <b id="hPoly">0</b></div>
+      <div>模式 <b id="hMode">选择</b></div>
+      <div>画质 <b id="hQuality">高清</b></div>
+    </div>
+    <div class="minimap-wrap">
+      <canvas id="minimap" width="120" height="120"></canvas>
+      <div class="mm-label">小地图</div>
+    </div>
+  </footer>
+
+  <!-- 物品信息卡 -->
+  <div id="infoCard" class="info-card">
+    <div class="ic-head"><b id="icName">物品</b><span class="ic-close" id="icClose">✕</span></div>
+    <div id="icTags" class="ic-tags"></div>
+    <div class="ic-row">
+      <input id="icNewTag" placeholder="新标签名 / 备注" maxlength="24" />
+      <button id="icAddTag" class="ghost">＋</button>
+    </div>
+    <div class="ic-row"><span id="icMeta" style="font-size:11px;color:var(--sub);line-height:1.6"></span></div>
+    <div class="ic-row"><span class="ic-mark" id="icMark" title="标记以便对比">☆</span><span style="font-size:11px;color:var(--sub)">点击标记用于对比记忆；同类/异类物体都可改标签</span></div>
+    <div class="ic-row"><button id="icLocate" class="ghost full">📍 定位到此物体</button></div>
+  </div>
+
+  <div id="toast"></div>
+
+  <!-- 帮助 -->
+  <div id="helpModal" class="modal hidden">
+    <div class="card help-card">
+      <h1>⌨ 快捷键与操作</h1>
+      <div class="help-grid">
+        <div><b>视角</b><span>左键拖动旋转 · 滚轮缩放 · 右键平移</span></div>
+        <div><b>变换</b><span>W 移动 · E 旋转 · R 缩放</span></div>
+        <div><b>删除</b><span>Delete / Backspace</span></div>
+        <div><b>撤销</b><span>Ctrl+Z · 重做 Ctrl+Shift+Z</span></div>
+        <div><b>漫游</b><span>点 🚶 进入 · WASD 移动 · ESC 退出</span></div>
+        <div><b>绘画</b><span>切到绘画模式，模型上按住拖动</span></div>
+        <div><b>布尔</b><span>选中主体→拾取目标→选运算</span></div>
+        <div><b>存档</b><span>保存/读取 JSON · 导出 GLTF 给 Blender/Unity</span></div>
+      </div>
+      <button id="btnHelpClose" class="primary">知道了</button>
+    </div>
+  </div>
+
+  <!-- ============ 全屏世界管理页（默认 hidden，由接线层显示） ============ -->
+  <section id="worldManager" class="fullscreen-page wm-page hidden" data-layout="grid" aria-label="世界管理">
+    <!-- L0 玄墨/天光/景深/暗角 背景层 -->
+    <div class="wm-bg" aria-hidden="true">
+      <div class="wm-bg-glow"></div>
+      <div class="wm-bg-ridge wm-bg-far"></div>
+      <div class="wm-bg-ridge wm-bg-mid"></div>
+      <div class="wm-bg-mist"></div>
+      <div class="wm-bg-vignette"></div>
+    </div>
+
+    <!-- L0 顶栏 -->
+    <header class="wm-top">
+      <div class="wm-brand">
+        <span class="wm-sigil" aria-hidden="true">◆</span>
+        <div>
+          <div class="wm-h0">我的世界</div>
+          <div class="wm-subline">铸造 · 收藏 · 漫游</div>
+        </div>
+      </div>
+      <div class="wm-top-actions">
+        <span class="wm-count">共 <b id="wmWorldCount">0</b> 个世界</span>
+        <button id="wmImportSave" class="ghost" title="从 JSON 文件导入存档">导入存档</button>
+        <button id="wmSettings" class="icon" title="设置" aria-label="设置">⚙</button>
+      </div>
+    </header>
+
+    <!-- L1 主行动 -->
+    <div class="wm-hero">
+      <h1 class="wm-hero-title">铸造你的世界</h1>
+      <button id="wmCreateBtn" class="primary cta-gold wm-create">＋ 建立新世界</button>
+    </div>
+
+    <!-- L3 工具条 -->
+    <div class="wm-tools">
+      <div class="wm-layouts" role="group" aria-label="排布方式">
+        <button id="wmLayoutGrid" class="wm-layout active" data-layout="grid" aria-pressed="true">▦ 网格</button>
+        <button id="wmLayoutList" class="wm-layout" data-layout="list" aria-pressed="false">☰ 列表</button>
+        <button id="wmLayoutTimeline" class="wm-layout" data-layout="timeline" aria-pressed="false">◷ 时间轴</button>
+      </div>
+      <div class="wm-filters">
+        <select id="wmFilterBiome" aria-label="按生态筛选">
+          <option value="">全部生态</option>
+          <option value="grass">草原</option><option value="snow">雪原</option>
+          <option value="desert">沙漠</option><option value="cyber">赛博</option>
+        </select>
+        <select id="wmFilterSync" aria-label="按同步状态筛选">
+          <option value="">全部状态</option>
+          <option value="synced">已同步</option><option value="pending">待同步</option>
+          <option value="conflict">冲突</option><option value="off">未开启</option>
+        </select>
+        <select id="wmSortBy" aria-label="排序方式">
+          <option value="openedAt">最近打开</option><option value="name">名称 A→Z</option>
+          <option value="createdAt">创建时间</option><option value="size">体积</option>
+        </select>
+        <input id="wmSearch" class="wm-search" type="search" placeholder="搜索世界…" autocomplete="off" aria-label="搜索世界" />
+      </div>
+    </div>
+
+    <!-- L2 世界卡片区（数据由接线层填充；占位卡带 data-world-id 钩子） -->
+    <div id="wmWorlds" class="wm-worlds" data-layout="grid" aria-live="polite">
+      <article id="wmNewCard" class="wm-card wm-card--new" data-world-id="__new__" tabindex="0" aria-label="建立新世界">
+        <div class="wm-thumb wm-thumb--new" aria-hidden="true"><span>＋</span></div>
+        <div class="wm-card-body"><div class="wm-card-name">建立新世界</div><div class="wm-card-meta">从一片天地开始</div></div>
+      </article>
+    </div>
+
+    <!-- 空状态 -->
+    <div id="wmEmpty" class="wm-empty hidden">
+      <div class="wm-empty-seal" aria-hidden="true">印</div>
+      <h2>还没有世界</h2>
+      <p>建一个，开始你的第一块地形。</p>
+      <button id="wmEmptyCreate" class="primary cta-gold">＋ 建立新世界</button>
+    </div>
+
+    <!-- 卡片模板：接线层 clone 后填 data-world-id / data-name / data-biome / data-opened / data-sync -->
+    <template id="wmCardTpl">
+      <article class="wm-card" data-world-id="" tabindex="0" aria-label="世界卡片">
+        <div class="wm-thumb" data-thumb aria-hidden="true"></div>
+        <div class="wm-card-body">
+          <div class="wm-card-name" data-name></div>
+          <div class="wm-card-meta"><span data-biome></span> · <time data-opened></time></div>
+          <div class="wm-sync" data-sync></div>
+        </div>
+        <button class="wm-more" data-more aria-label="更多操作">⋯</button>
+      </article>
+    </template>
+
+    <!-- L4 状态条 -->
+    <footer class="wm-status">
+      <span class="wm-storage">本地存储 <b id="wmStoragePct">0%</b> <i class="wm-bar"><i id="wmStorageFill"></i></i></span>
+      <span id="wmSyncOverview">云同步：未开启</span>
+      <button id="wmExportAll" class="ghost">导出全部</button>
+    </footer>
+  </section>
+
+  <!-- ============ 新建世界配置页（默认 hidden） ============ -->
+  <section id="worldConfig" class="fullscreen-page wc-page hidden" aria-label="新建世界配置">
+    <header class="wc-top">
+      <div class="wm-h0">铸造你的世界</div>
+      <button id="wcCancel" class="ghost">返回世界管理</button>
+    </header>
+    <div class="wc-scroll">
+      <!-- 组 A · 身份与场景 -->
+      <fieldset class="wc-group" id="wcGroupA">
+        <legend>身份与场景</legend>
+        <label class="wc-field wc-field--name" for="wcName">
+          <span>世界名</span>
+          <input id="wcName" type="text" maxlength="24" value="未命名世界" placeholder="给世界起个名字" autocomplete="off" />
+        </label>
+        <div class="wc-field">
+          <span>生态场景</span>
+          <div class="wc-biomes" id="wcBiomes" role="radiogroup" aria-label="生态场景">
+            <button class="wc-biome biome-grass active" data-biome-switch="grass" role="radio" aria-checked="true"><span class="wc-bswatch" aria-hidden="true"></span><span class="wc-bname">草原</span><span class="wc-bmood">生机 · 晨雾</span></button>
+            <button class="wc-biome biome-snow" data-biome-switch="snow" role="radio" aria-checked="false"><span class="wc-bswatch" aria-hidden="true"></span><span class="wc-bname">雪原</span><span class="wc-bmood">凛冽 · 静谧</span></button>
+            <button class="wc-biome biome-desert" data-biome-switch="desert" role="radio" aria-checked="false"><span class="wc-bswatch" aria-hidden="true"></span><span class="wc-bname">沙漠</span><span class="wc-bmood">苍茫 · 炽烈</span></button>
+            <button class="wc-biome biome-cyber" data-biome-switch="cyber" role="radio" aria-checked="false"><span class="wc-bswatch" aria-hidden="true"></span><span class="wc-bname">赛博</span><span class="wc-bmood">霓虹 · 雨夜</span></button>
+          </div>
+        </div>
+        <label class="wc-field" for="wcSeed">
+          <span>初始地形种子</span>
+          <span class="wc-inline"><input id="wcSeed" type="number" value="7" min="1" max="999999" /><button id="wcSeedRandom" class="ghost" type="button">换一个</button></span>
+        </label>
+        <label class="wc-field" for="wcWeather">
+          <span>初始天气</span>
+          <select id="wcWeather">
+            <option value="clear">晴</option><option value="rain">雨</option><option value="snow">雪</option>
+            <option value="storm">雷暴</option><option value="fog">浓雾</option><option value="aurora">极光</option>
+            <option value="sandstorm">沙暴</option><option value="sunny">多云</option><option value="mist">薄雾</option>
+          </select>
+        </label>
+        <label class="wc-field" for="wcTimeOfDay">
+          <span>时段</span>
+          <span class="wc-inline"><input id="wcTimeOfDay" type="range" min="0" max="100" value="55" /><output id="wcTimeOut" for="wcTimeOfDay">正午</output></span>
+        </label>
+      </fieldset>
+
+      <!-- 组 B · 开局设定 -->
+      <fieldset class="wc-group" id="wcGroupB">
+        <legend>开局设定</legend>
+        <div class="wc-field"><span>画质档位</span>
+          <div class="wc-seg" id="wcQuality" role="group" aria-label="画质档位">
+            <button type="button" data-quality="low">流畅</button><button type="button" data-quality="medium" class="active">标准</button><button type="button" data-quality="high">高清</button><button type="button" data-quality="cinema">电影级</button>
+          </div>
+        </div>
+        <div class="wc-field"><span>初始物体包</span>
+          <div class="wc-seg" id="wcStarterKit" role="group" aria-label="初始物体包">
+            <button type="button" data-kit="empty">空场景</button><button type="button" data-kit="basic" class="active">基础包</button><button type="button" data-kit="demo">演示场景</button>
+          </div>
+        </div>
+        <label class="wc-field wc-field--check" for="wcCloudSync">
+          <input id="wcCloudSync" type="checkbox" />
+          <span>开启云同步<small>离线时仍可本地保存，联网后自动同步</small></span>
+        </label>
+      </fieldset>
+
+      <!-- 组 C · 高级（默认折叠） -->
+      <details class="wc-group wc-group--adv" id="wcGroupC">
+        <summary>更多设定</summary>
+        <label class="wc-field" for="wcTerrainHeight"><span>地形起伏度</span><input id="wcTerrainHeight" type="range" min="0" max="8" step="0.2" value="3" /></label>
+        <label class="wc-field" for="wcTerrainSeg"><span>地形分辨率</span><input id="wcTerrainSeg" type="number" value="96" min="32" max="160" step="8" /></label>
+        <div class="wc-field"><span>起始视角</span>
+          <div class="wc-seg" id="wcStartView" role="group" aria-label="起始视角">
+            <button type="button" data-view="top" class="active">俯瞰</button><button type="button" data-view="ground">地面</button><button type="button" data-view="roam">漫游起点</button>
+          </div>
+        </div>
+        <div class="wc-field"><span>工作台初始面板</span>
+          <div class="wc-seg" id="wcInitialPanel" role="group" aria-label="工作台初始面板">
+            <button type="button" data-panel="expanded">展开</button><button type="button" data-panel="collapsed" class="active">收起</button>
+          </div>
+        </div>
+        <div class="wc-field"><span>初始交互模式</span>
+          <div class="wc-seg" id="wcInitialMode" role="group" aria-label="初始交互模式">
+            <button type="button" data-imode="select" class="active">选择</button><button type="button" data-imode="roam">漫游</button>
+          </div>
+        </div>
+        <div class="wc-field"><span>环境细节</span>
+          <div class="wc-env" role="group" aria-label="环境细节">
+            <label><input id="wcEnvWater" type="checkbox" checked /> 水面</label>
+            <label><input id="wcEnvGrid" type="checkbox" checked /> 网格</label>
+            <label><input id="wcEnvFog" type="checkbox" checked /> 雾</label>
+            <label><input id="wcEnvParticles" type="checkbox" checked /> 粒子</label>
+          </div>
+        </div>
+      </details>
+    </div>
+    <footer class="wc-actions">
+      <button id="wcSubmit" class="primary cta-gold">创建并进入 →</button>
+    </footer>
+  </section>
+
+  <!-- 开场设定（旧入口，DOM ID 保留供接线层兼容；默认 hidden） -->
+  <div id="intro" class="modal hidden">
+    <div class="card intro-card">
+      <h1>铸造你的世界</h1>
+      <p class="intro-sub">选一个起点，随时都能改。</p>
+      <div class="themes" id="themePick" role="radiogroup" aria-label="初始生态环境">
+        <button data-theme="grass" class="active theme-card biome-grass" role="radio" aria-checked="true"><span class="tc-emblem" aria-hidden="true">草</span><span class="tc-name">草原</span><span class="tc-mood">生机 · 晨雾</span></button>
+        <button data-theme="snow" class="theme-card biome-snow" role="radio" aria-checked="false"><span class="tc-emblem" aria-hidden="true">雪</span><span class="tc-name">雪原</span><span class="tc-mood">凛冽 · 静谧</span></button>
+        <button data-theme="desert" class="theme-card biome-desert" role="radio" aria-checked="false"><span class="tc-emblem" aria-hidden="true">沙</span><span class="tc-name">沙漠</span><span class="tc-mood">苍茫 · 炽烈</span></button>
+        <button data-theme="cyber" class="theme-card biome-cyber" role="radio" aria-checked="false"><span class="tc-emblem" aria-hidden="true">霓</span><span class="tc-name">赛博</span><span class="tc-mood">霓虹 · 雨夜</span></button>
+      </div>
+      <label class="row intro-name" for="worldName"><span>世界名</span><input id="worldName" type="text" value="未命名世界" maxlength="24" placeholder="给世界起个名字" autocomplete="off" /></label>
+      <button id="startWorld" class="primary cta-gold">创建并进入 →</button>
+    </div>
+  </div>
+
+  <div id="loading" class="modal"><div class="card loading-card"><div class="spin"></div><p>正在加载本地 3D 引擎…</p></div></div>
+</div>
+
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
